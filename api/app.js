@@ -1,4 +1,4 @@
-if(process.env.NODE_ENV !== 'production') 
+if(process.env.NODE_ENV != 'production') 
   require('dotenv').config(); //dotenv kütüphanesini import ettik ve config fonksiyonunu çağırdık. Bu fonksiyon .env dosyasını okuyarak process.env ye değişkenlerimizi ekleyecektir.
 
 //require('dotenv').config(); //dotenv kütüphanesini import ettik ve config fonksiyonunu çağırdık. Bu fonksiyon .env dosyasını okuyarak process.env ye değişkenlerimizi ekleyecektir.
@@ -15,7 +15,7 @@ var usersRouter = require('./routes/users');
 
 var app = express();
 
-console.log(process.env); //process environment değişkenlerini görmek için kullanılır.
+//console.log(process.env); //process environment değişkenlerini görmek için kullanılır.
 
 
 // view engine setup
