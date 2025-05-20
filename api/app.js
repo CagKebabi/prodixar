@@ -10,8 +10,8 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+// var indexRouter = require('./routes/index');
+// var usersRouter = require('./routes/users');
 
 var app = express();
 
@@ -33,8 +33,14 @@ app.use((req, res, next) => {
   next()
 })
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
+//app.jsde bu routerları import ediyoruz.
+// app.use('/', require('./routes/index')); // http://localhost:3000/
+// app.use('/users', require('./routes/users')); // http://localhost:3000/users
+// app.use('/auditlogs', require('./routes/auditlogs')); // http://localhost:3000/auditlogs
+
+// Yukarıdaki gibi tüm routeslarımızı tek tek tanımlamak yerine dinamik routes yapısı kullanacağız.
+// dinamik routes için routes daki index.js de düzenleme yapıyoruz.
+app.use('/api', require('./routes/index')); // http://localhost:3000/api // / yerine /api yazmamızın sebebi frontende routes tanımlarken backendle çakışmasını önlemek  
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
