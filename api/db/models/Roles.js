@@ -10,7 +10,7 @@ const schema = mongoose.Schema({
     }
 }, {
     versionKey: false, //Mongoose kütüphanesinin otomatik olarak her tablonun her fieldinde versionKey adında bir field oluşturmasını istemiyoruz. Bu field her tablonun her fieldında otomatik olarak oluşturuluyor. Bu fieldın amacı veritabanındaki verilerin versiyonunu tutmaktır. Bu nedenle bu fieldı false yapıyoruz.
-    timesstamps: {
+    timestamps: {
         createdAt: 'created_at',
         updatedAt: 'updated_at'
     }

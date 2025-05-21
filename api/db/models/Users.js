@@ -20,7 +20,7 @@ const schema = mongoose.Schema({
     //Alttaki gibi yazmak yerine  timestamps: true yazarsak otomatik olarak createdAt ve updatedAt fieldları oluşturur.
     //fakat biz diğer fieldlarımızda _ kullandıpğımız için bu şekilde tanımladık. phone_number gibi created_at olmasını istediğimiz için.
 
-    timesstamps: {
+    timestamps: {
         createdAt: 'created_at',
         updatedAt: 'updated_at'
     }
