@@ -26,6 +26,14 @@ class Response {
                     description: error.description,
                 }
             }
+        } else if (error.message.includes("E11000")) { // Bu db modellerimizde uniqe:true değerine sahip olan fieldlarımızda aynı isimle filed eklenmek istendiğinde alınan hatanın kodu 
+            return {
+                code: Enum.HTTP_CODES.CONFLICT,
+                error: {
+                    message: "Already Exist!",
+                    description: "Already Exist!",
+                }
+            }
         }
         return {
             code: Enum.HTTP_CODES.INTERNAL_SERVER_ERROR,
