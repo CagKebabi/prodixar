@@ -17,7 +17,10 @@ module.exports = {
         TOO_MANY_REQUESTS: 429,
         INTERNAL_SERVER_ERROR: 500,
         BAD_GETAWAY: 502,
-    }
+    },
+
+    PASS_LENGTH: 8,
+    SUPER_ADMIN: "SUPER_ADMIN",
 }
 
 // ENUM enumaration dır açılımı. Birden fazla tipte veriyi okunabilir bir şekilde

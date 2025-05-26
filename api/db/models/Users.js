@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 //Şema adında bir değişken tanımladık. Bu değişken mongoose kütüphanesinin Schema fonksiyonunu kullanarak bir şema oluşturuyoruz.
 //Burada ise tablolarımızın fieldlarını tanımlıyoruz.
 const schema = mongoose.Schema({
-    email: {type: String, required: true}, //Burada email fieldımız zorunlu kıldık yani email değeri olmadan bu şemaya kayıt yapılamaz
+    email: {type: String, required: true, unique: true}, //Burada email fieldımız zorunlu kıldık yani email değeri olmadan bu şemaya kayıt yapılamaz
     password: {type: String, required: true}, 
     is_active: {type: Boolean, default: true}, //Bu fieldımız zorunlu değil default olarak true değerini alır
     first_name: String,
@@ -17,9 +17,9 @@ const schema = mongoose.Schema({
     // phone_number: String,
 
 }, {
+    versionKey: false, //Bu fieldı false yaparak mongoose'un otomatik olarak oluşturduğu __v fieldını kaldırıyoruz. Bu field veritabanında versiyonlama için kullanılır.
     //Alttaki gibi yazmak yerine  timestamps: true yazarsak otomatik olarak createdAt ve updatedAt fieldları oluşturur.
     //fakat biz diğer fieldlarımızda _ kullandıpğımız için bu şekilde tanımladık. phone_number gibi created_at olmasını istediğimiz için.
-
     timestamps: {
         createdAt: 'created_at',
         updatedAt: 'updated_at'
