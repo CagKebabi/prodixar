@@ -9,6 +9,10 @@ const Response = require('../lib/Response');
 const CustomError = require('../lib/Error');
 // ENUM'leri import ettik.
 const Enum = require('../config/Enum');
+// AuditLogs import ettik.
+const AuditLogs = require('../lib/AuditLogs');
+// Logger import ettik.
+const logger = require('../lib/logger/LoggerClass');
 
 // const isAuthenticated = true;
 
@@ -53,9 +57,13 @@ router.post("/add", async (req, res) => {
 
         await category.save(); // mongoose.Model in bize sunduğu save() fonksiyonunu kullanarak oluşturduğumuz category nesnesini veritabanına kaydediyoruz.
 
+        AuditLogs.info(req.user?.email, "Categories", "Category Add", category);
+        logger.info(req.user?.email, "Categories", "Category Add", category);
+
         res.json(Response.successResponse({success: true}));
 
     } catch (err) {
+        logger.error(req.user?.email, "Categories", "Category Add", err);
         let errorResponse = Response.errorResponse(err);
         res.status(errorResponse.code).json(errorResponse);
     }
@@ -76,6 +84,8 @@ router.post("/update", async (req, res) => {
        // Burada _ id yi biz Categories modelinde tanımlamadaık bu _id değeri veritabanında görülebilir mongoose tarafından otomatik olarak oluşturuluyor.
        await Categories.updateOne({_id: body._id}, updates) //updateOne fonksiyonu ile güncelleme işlemi yapıyoruz. Aldığı parametre ise veritabanındaki hangi verinin güncelleneceğini belirten bir querydir.
 
+       AuditLogs.info(req.user?.email, "Categories", "Category Update", {_id: body._id, ...updates});
+
        res.json(Response.successResponse({success: true}));
 
     } catch (err) {
@@ -92,6 +102,8 @@ router.post("/delete", async (req, res) => {
         if (!body._id) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", "_id field must be filled!");
 
         await Categories.deleteOne({_id: body._id}); //deleteOne fonksiyonu ile silme işlemi yapıyoruz. Aldığı parametre ise veritabanındaki hangi verinin silineceğini belirten bir querydir.
+
+        AuditLogs.info(req.user?.email, "Categories", "Category Delete", {_id: body._id});
 
         res.json(Response.successResponse({success: true}));
 

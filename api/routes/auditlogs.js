@@ -1,5 +1,57 @@
 const express = require('express');
+const moment = require('moment'); // Tarih işlemlerini kolaylaştıran bir modül
 const router = express.Router();
+const Response = require('../lib/Response');
+const AuditLogs = require('../db/models/AuditLogs');
+
+// Normalde biz find({}) metodumuzda ({}) query parametresini hep boş bırakarak atıyorduk
+// fakat auditlogs büyük bir veri kümesi olacağı için burada filtreleme işlemleriyle
+// verileri sınırlayacağız. get i post metoduna çevirmemizin sebebi req body den 
+// daha kolay veri alabilmek için.
+
+router.post("/", async(req, res, next) => {
+    try {
+       let body = req.body;
+       let query = {};
+       let skip = body.skip;
+       let limit = body.limit;
+
+       if (typeof body.skip !== "numeric") {
+        skip = 0;
+       }
+       if (typeof body.limit !== "numeric" || body.limit > 500) {
+        limit = 500;
+       }
+       
+       if (body.begin_date && body.end_date) {
+          // Burada query.created_at alanının değeri body.begin_date ile gönderilmiş tarihten büyük veya eşitse
+          // ve body.end_date ile gönderilen tarihten küçükse veya eşitse bu koşula uyan auditlogs
+          // verilerini getirecektir.
+          query.created_at = {
+            $gte: moment(body.begin_date), // moment() ile verileri düzgün bir tarih formatına sokuyoruz 
+            $lte: moment(body.end_date)
+          }
+       } else {
+          query.created_at = {
+            // Burada 1 gün öncesinden şimdiye kadar tüm verileri çek dememize yardımcı olacak olan filtrelemedir.
+            $gte: moment().subtract(1, "day").startOf("day"), // moment() bize günümüze ait tarihi verir. moment().subtract(1, "day") ise son bir günü döner. moment().subtract(1, "day").startOf("day") ise günün başından 00:00:00 başlar.
+            $lte: moment() 
+          }
+       }
+       
+       // queryden 500den fazla veri gelirse 500 ile sınırla dedik. Çünkü aynı günde çok fazla işlem yapılmış olabilir. 
+       // skip in anlamıda biz bir pagination yapacağımız için 500 değerini aldıktan sonra fazlası varsa 500 daha ekler 500 daha ekleyerek verileri getirir. 
+       // sort: {created_at: -1} ise created_at alanına göre tersten sıralamalı getir demektir böylece en son kaydedilen veri bize ilk başta gelir.
+       let auditlogs = await AuditLogs.find(query).sort({created_at: -1}).skip(skip).limit(limit); 
+
+       res.json(Response.successResponse(auditlogs));
+    } catch (error) {
+       let errorResponse = Response.errorResponse(error); 
+       res.status(errorResponse.code).json(errorResponse);
+    }
+})
+
+module.exports = router;
 
 //req bize göderilen isteğin içinde bulunan body headerı ve diğer bilgileri barındırır
 //res bizim reqe vereceğimiz cevabın fonksiyonlarını barındırır
@@ -18,18 +70,18 @@ const router = express.Router();
 // })
 
 
-//Yukarıdan farklı olarak aşağıda açıklandığı gibi params ile olan endpoint kullanımı
-router.get("/:id", (req, res, next) => { 
-    //aşağıda req ile gelen bilgileri res ile kullanıcıya geri döndürdük
-    res.json({
-        body: req.body,
-        params: req.params,
-        query: req.query,
-        headers: req.headers
-    });
-})
+// //Yukarıdan farklı olarak aşağıda açıklandığı gibi params ile olan endpoint kullanımı
+// router.get("/:id", (req, res, next) => { 
+//     //aşağıda req ile gelen bilgileri res ile kullanıcıya geri döndürdük
+//     res.json({
+//         body: req.body,
+//         params: req.params,
+//         query: req.query,
+//         headers: req.headers
+//     });
+// })
 
-module.exports = router;
+// module.exports = router;
 //app.jsde bu routerları import ediyoruz.
 
 // Postmanda http://localhost:3000/auditlogs adresine GET isteği atarsak bize aşağıdaki sonucu verecektir

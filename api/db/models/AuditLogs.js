@@ -5,7 +5,7 @@ const schema = mongoose.Schema({
     email: String,
     location: String,
     proc_type: String,
-    log: String,
+    log: mongoose.SchemaTypes.Mixed, // mongoose.SchemaTypes.Mixed ile log fieldını herhangi bir veri tipine sahip olabilir demek.
 }, {
     versionKey: false, 
     timestamps: {
