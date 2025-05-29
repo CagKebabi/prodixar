@@ -1,5 +1,7 @@
 var express = require('express');
 const bcrypt = require('bcrypt'); // Kullanıcı kayıt işlemlerinde şifreleme için bcrypt kütüphanesini kullanıyoruz. Böylece kullanıcı şifrelerini güvenli bir şekilde saklayabiliriz.
+const jwt = require('jwt-simple')
+const is = require('is_js');
 
 const Users = require('../db/models/Users');
 const Response = require('../lib/Response');
@@ -8,6 +10,7 @@ const Enum = require('../config/Enum');
 const UserRoles = require('../db/models/UserRoles');
 const Roles = require('../db/models/Roles'); // Kullanıcı rolleri için Roles modelini import ediyoruz. Bu model, kullanıcıların rollerini yönetmek için kullanılır.
 var router = express.Router();
+const config = require('../config'); // Config dosyasını import ediyoruz. Bu dosya, uygulamanın yapılandırma ayarlarını içerir.
 
 /* GET users listing. */
 router.get('/', async(req, res, next) => {
@@ -181,5 +184,40 @@ router.post("/register", async(req, res, next) => {
     res.status(errorResponse.code).json(errorResponse);
   }
 });
+
+router.post("/auth", async (req, res, next) => {
+  try {
+    let {email, password} = req.body;
+
+    Users.validateFieldsBeforeAuth(email, password); // Kullanıcıdan gelen email ve password alanlarını kontrol ediyoruz. Eğer geçerli değilse hata fırlatıyoruz.
+  
+    let user = await Users.findOne({email}); // Kullanıcıyı email ile bulmaya çalışıyoruz.
+
+    if (!user) throw new CustomError(Enum.HTTP_CODES.UNAUTHORIZED, "Validation Error!", "Email or password is not valid");
+
+    // DB den gelen kullanıcının hashli şifresini kontrol ediyoruz. Eğer kullanıcı bulunamazsa veya şifreler eşleşmezse hata fırlatıyoruz.
+    // Kullanıcının şifresini kontrol ediyoruz. 
+    if (!user.validPassword(password)) throw new CustomError(Enum.HTTP_CODES.UNAUTHORIZED, "Validation Error!", "Email or password is not valid");
+
+    // JWT Token oluşturma
+    let payload = {
+      _id: user._id,
+      exp: parseInt(Date.now() / 1000) + config.JWT.EXPIRE_TIME // Tokenin ne zaman süresinin dolacağını belirtiyoruz. config dosyasındaki EXPIRE_TIME değerini kullanıyoruz.
+    };
+
+    let token = jwt.encode(payload, config.JWT.SECRET); // JWT Token oluşturuyoruz. payload ve secret key ile tokeni encode ediyoruz.
+
+    let userData = {
+      _id: user._id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+    };
+    res.json(Response.successResponse({token, user: userData}))
+
+  } catch (err) {
+    let errorResponse = Response.errorResponse(err);
+    res.status(errorResponse.code).json(errorResponse);
+  }
+})
 
 module.exports = router;

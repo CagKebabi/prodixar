@@ -1,4 +1,7 @@
 const mongoose = require('mongoose');
+const { PASS_LENGTH, HTTP_CODES } = require('../../config/Enum');
+const is = require('is_js'); // is kütüphanesini import ediyoruz. Bu kütüphane ile emailin doğru formatta olup olmadığını kontrol edeceğiz.
+const bcrypt = require('bcrypt'); // bcrypt kütüphanesini import ediyoruz. Bu kütüphane ile şifreleri hashleyeceğiz.
 
 //Şema adında bir değişken tanımladık. Bu değişken mongoose kütüphanesinin Schema fonksiyonunu kullanarak bir şema oluşturuyoruz.
 //Burada ise tablolarımızın fieldlarını tanımlıyoruz.
@@ -29,7 +32,18 @@ const schema = mongoose.Schema({
 //Users ismiyle bir class oluşturuyoruz. Users tablamouzun adıdır. Bu tabloyu mongoose.Model den extend ediyoruz.
 //Bu işlem oop ye göre bir classtan farklı classlar üretiyoruz.
 class Users extends mongoose.Model {
-    
+    validPassword(password) {
+        // Burada şifreyi kontrol ediyoruz. Eğer şifre doğruysa true, yanlışsa false döndürüyoruz.
+        return bcrypt.compareSync(password, this.password);
+    }
+
+    static validateFieldsBeforeAuth(email, password) {
+        if (typeof password !== 'string' || password.length < PASS_LENGTH || is.not.email(email)) {
+            throw new Error(HTTP_CODES.UNAUTHORIZED, "Validation Error!", "Email or password is not valid");
+        }
+
+        return null
+    }
 }
 
 //classımızı schema ile birleştiriyoruz. Bu işlem ile classımızı mongoose kütüphanesine tanıtıyoruz.
