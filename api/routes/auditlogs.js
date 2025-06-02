@@ -3,6 +3,16 @@ const moment = require('moment'); // Tarih işlemlerini kolaylaştıran bir mod�
 const router = express.Router();
 const Response = require('../lib/Response');
 const AuditLogs = require('../db/models/AuditLogs');
+const auth = require('../lib/auth')(); // auth kütüphanesini import ediyoruz. Bu kütüphane JWT ile kimlik doğrulama işlemlerini yapacak.
+
+// /api/auidtlogs endpointi ile başlayan tüm endpoşintler için aşağıdaki middleware'ini kullanıyoruz.
+// Aşağıdaki middleware, tüm isteklerde kimlik doğrulama işlemini yapacak.
+// auth.authenticate() fonksiyonu, JWT token'ını kontrol edecek ve geçerli bir token varsa istekleri devam ettirecek.
+// Yani artık kullanıcı giriş yapmadan auditlogs endpointine erişemeyecek.
+// auth endpointi ile giriş yaptıktan sonra res de gelen tokenı kopyalayıp Postman'de Authorization sekmesinden Bearer Token olarak yapıştırarak istek atabiliriz.
+router.all("*",auth.authenticate(), (req, res, next) => {
+   next()
+})
 
 // Normalde biz find({}) metodumuzda ({}) query parametresini hep boş bırakarak atıyorduk
 // fakat auditlogs büyük bir veri kümesi olacağı için burada filtreleme işlemleriyle

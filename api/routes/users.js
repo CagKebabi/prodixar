@@ -11,6 +11,100 @@ const UserRoles = require('../db/models/UserRoles');
 const Roles = require('../db/models/Roles'); // Kullanıcı rolleri için Roles modelini import ediyoruz. Bu model, kullanıcıların rollerini yönetmek için kullanılır.
 var router = express.Router();
 const config = require('../config'); // Config dosyasını import ediyoruz. Bu dosya, uygulamanın yapılandırma ayarlarını içerir.
+const auth = require('../lib/auth')(); // auth kütüphanesini import ediyoruz. Bu kütüphane JWT ile kimlik doğrulama işlemlerini yapacak.
+
+router.post("/register", async(req, res, next) => {
+  let body = req.body;
+  try {
+    let user = await Users.findOne({}) // Burada bir kullanıcı oluştumu diye kontrol ediyoruz.
+
+    if (user) {
+      return res.sendStatus(Enum.HTTP_CODES.NOT_FOUND)
+    }
+
+    if (!body.email) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", "email fields must be filled");
+
+    if (!body.password) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", "password fields must be filled");
+
+    if (body.password.length < Enum.PASS_LENGTH) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", `password must be at least ${Enum.PASS_LENGTH} characters long`);
+
+    let password = bcrypt.hashSync(body.password, bcrypt.genSaltSync(8), null); 
+
+    let createdUser = await Users.create({
+      email: body.email,
+      password: password,
+      is_active: true, 
+      first_name: body.first_name,
+      last_name: body.last_name,
+      phone_number: body.phone_number
+    })
+
+    let role = await Roles.create({
+      role_name: Enum.SUPER_ADMIN,
+      is_active: true,
+      created_by: createdUser._id
+    })
+
+    await UserRoles.create({
+      role_id: role._id, 
+      user_id: createdUser._id 
+    })
+
+    res.status(Enum.HTTP_CODES.CREATED).json(Response.successResponse({success: true}, Enum.HTTP_CODES.CREATED));
+
+  } catch (err) {
+    let errorResponse = Response.errorResponse(err);
+    res.status(errorResponse.code).json(errorResponse);
+  }
+});
+
+router.post("/auth", async (req, res, next) => {
+  try {
+    let {email, password} = req.body;
+
+    Users.validateFieldsBeforeAuth(email, password); // Kullanıcıdan gelen email ve password alanlarını kontrol ediyoruz. Eğer geçerli değilse hata fırlatıyoruz.
+  
+    let user = await Users.findOne({email}); // Kullanıcıyı email ile bulmaya çalışıyoruz.
+
+    if (!user) throw new CustomError(Enum.HTTP_CODES.UNAUTHORIZED, "Validation Error!", "Email or password is not valid");
+
+    // DB den gelen kullanıcının hashli şifresini kontrol ediyoruz. Eğer kullanıcı bulunamazsa veya şifreler eşleşmezse hata fırlatıyoruz.
+    // Kullanıcının şifresini kontrol ediyoruz. 
+    if (!user.validPassword(password)) throw new CustomError(Enum.HTTP_CODES.UNAUTHORIZED, "Validation Error!", "Email or password is not valid");
+
+    // JWT Token oluşturma
+    let payload = {
+      _id: user._id,
+      exp: parseInt(Date.now() / 1000) + config.JWT.EXPIRE_TIME // Tokenin ne zaman süresinin dolacağını belirtiyoruz. config dosyasındaki EXPIRE_TIME değerini kullanıyoruz.
+    };
+
+    let token = jwt.encode(payload, config.JWT.SECRET); // JWT Token oluşturuyoruz. payload ve secret key ile tokeni encode ediyoruz.
+
+    let userData = {
+      _id: user._id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+    };
+    
+    res.json(Response.successResponse({token, user: userData}))
+
+  } catch (err) {
+    let errorResponse = Response.errorResponse(err);
+    res.status(errorResponse.code).json(errorResponse);
+  }
+})
+
+// Diğer endpointlerden farklı olarak tüm endpointlerin en başına değilde /register ve /auth endpointlerinden sonra koymamızın nedeni.
+// /auth ve /register endpointlerinde kimlik doğrulama işlemine gerek olmamasıdır.
+
+// /api/categories endpointi ile başlayan tüm endpoşintler için aşağıdaki middleware'ini kullanıyoruz.
+// Aşağıdaki middleware, tüm isteklerde kimlik doğrulama işlemini yapacak.
+// auth.authenticate() fonksiyonu, JWT token'ını kontrol edecek ve geçerli bir token varsa istekleri devam ettirecek.
+// Yani artık kullanıcı giriş yapmadan categories endpointine erişemeyecek.
+// auth endpointi ile giriş yaptıktan sonra res de gelen tokenı kopyalayıp Postman'de Authorization sekmesinden Bearer Token olarak yapıştırarak istek atabiliriz.
+router.all("*",auth.authenticate(), (req, res, next) => {
+   next()
+})
 
 /* GET users listing. */
 router.get('/', async(req, res, next) => {
@@ -139,85 +233,5 @@ router.post("/delete", async(req, res, next) => {
     res.status(errorResponse.code).json(errorResponse);
   }
 });
-
-router.post("/register", async(req, res, next) => {
-  let body = req.body;
-  try {
-    let user = await Users.findOne({}) // Burada bir kullanıcı oluştumu diye kontrol ediyoruz.
-
-    if (user) {
-      return res.sendStatus(Enum.HTTP_CODES.NOT_FOUND)
-    }
-
-    if (!body.email) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", "email fields must be filled");
-
-    if (!body.password) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", "password fields must be filled");
-
-    if (body.password.length < Enum.PASS_LENGTH) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", `password must be at least ${Enum.PASS_LENGTH} characters long`);
-
-    let password = bcrypt.hashSync(body.password, bcrypt.genSaltSync(8), null); 
-
-    let createdUser = await Users.create({
-      email: body.email,
-      password: password,
-      is_active: true, 
-      first_name: body.first_name,
-      last_name: body.last_name,
-      phone_number: body.phone_number
-    })
-
-    let role = await Roles.create({
-      role_name: Enum.SUPER_ADMIN,
-      is_active: true,
-      created_by: createdUser._id
-    })
-
-    await UserRoles.create({
-      role_id: role._id, 
-      user_id: createdUser._id 
-    })
-
-    res.status(Enum.HTTP_CODES.CREATED).json(Response.successResponse({success: true}, Enum.HTTP_CODES.CREATED));
-
-  } catch (err) {
-    let errorResponse = Response.errorResponse(err);
-    res.status(errorResponse.code).json(errorResponse);
-  }
-});
-
-router.post("/auth", async (req, res, next) => {
-  try {
-    let {email, password} = req.body;
-
-    Users.validateFieldsBeforeAuth(email, password); // Kullanıcıdan gelen email ve password alanlarını kontrol ediyoruz. Eğer geçerli değilse hata fırlatıyoruz.
-  
-    let user = await Users.findOne({email}); // Kullanıcıyı email ile bulmaya çalışıyoruz.
-
-    if (!user) throw new CustomError(Enum.HTTP_CODES.UNAUTHORIZED, "Validation Error!", "Email or password is not valid");
-
-    // DB den gelen kullanıcının hashli şifresini kontrol ediyoruz. Eğer kullanıcı bulunamazsa veya şifreler eşleşmezse hata fırlatıyoruz.
-    // Kullanıcının şifresini kontrol ediyoruz. 
-    if (!user.validPassword(password)) throw new CustomError(Enum.HTTP_CODES.UNAUTHORIZED, "Validation Error!", "Email or password is not valid");
-
-    // JWT Token oluşturma
-    let payload = {
-      _id: user._id,
-      exp: parseInt(Date.now() / 1000) + config.JWT.EXPIRE_TIME // Tokenin ne zaman süresinin dolacağını belirtiyoruz. config dosyasındaki EXPIRE_TIME değerini kullanıyoruz.
-    };
-
-    let token = jwt.encode(payload, config.JWT.SECRET); // JWT Token oluşturuyoruz. payload ve secret key ile tokeni encode ediyoruz.
-
-    let userData = {
-      _id: user._id,
-      first_name: user.first_name,
-      last_name: user.last_name,
-    };
-    res.json(Response.successResponse({token, user: userData}))
-
-  } catch (err) {
-    let errorResponse = Response.errorResponse(err);
-    res.status(errorResponse.code).json(errorResponse);
-  }
-})
 
 module.exports = router;

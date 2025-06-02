@@ -7,6 +7,17 @@ const Response = require('../lib/Response');
 const CustomError = require('../lib/Error');
 const Enum = require('../config/Enum');
 const role_privileges = require('../config/role_privileges');
+const auth = require('../lib/auth')(); // auth kütüphanesini import ediyoruz. Bu kütüphane JWT ile kimlik doğrulama işlemlerini yapacak.
+
+// /api/roles endpointi ile başlayan tüm endpoşintler için aşağıdaki middleware'ini kullanıyoruz.
+// Aşağıdaki middleware, tüm isteklerde kimlik doğrulama işlemini yapacak.
+// auth.authenticate() fonksiyonu, JWT token'ını kontrol edecek ve geçerli bir token varsa istekleri devam ettirecek.
+// Yani artık kullanıcı giriş yapmadan roles endpointine erişemeyecek.
+// auth endpointi ile giriş yaptıktan sonra res de gelen tokenı kopyalayıp Postman'de Authorization sekmesinden Bearer Token olarak yapıştırarak istek atabiliriz.
+router.all("*",auth.authenticate(), (req, res, next) => {
+   next()
+})
+
 
 router.get("/", async (req, res) => {
     try {
